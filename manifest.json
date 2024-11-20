@@ -10,11 +10,11 @@
     "downloads"
   ],
   "host_permissions": [
-    "https://api.openai.com/*"
+    "https://api.gemini.com/*"
   ],
   "minimum_chrome_version": "93",
   "background": {
-    "service_worker": "background.bundle.js",
+    "service_worker": "background.js",
     "type": "module"
   },
   "action": {
