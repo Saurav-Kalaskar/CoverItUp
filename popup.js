@@ -1,33 +1,22 @@
 document.getElementById("generate").addEventListener("click", async () => {
   const statusDiv = document.getElementById("status");
   const resumeText = document.getElementById("resumeText").value;
-  const generateButton = document.getElementById("generate");
   
   if (!resumeText.trim()) {
-    statusDiv.className = "error";
     statusDiv.textContent = "Please paste your resume text first.";
     return;
   }
 
   try {
-    generateButton.disabled = true;
-    statusDiv.className = "loading";
-    statusDiv.textContent = "Extracting job description from the page...";
+    statusDiv.textContent = "Getting job description...";
     
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      function: debugJobElements
-    });
-
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: getJobDescription
     });
 
     const jobDescription = results[0].result;
-    console.log('Extracted Job Description:', jobDescription);
     
     if (!jobDescription || jobDescription === "Job description not found.") {
       throw new Error("Could not find job description on the current page. Please make sure you're on a job posting page.");
@@ -36,58 +25,36 @@ document.getElementById("generate").addEventListener("click", async () => {
     statusDiv.textContent = "Found job description. Generating cover letter...";
     console.log('Job Description:', jobDescription);
     
-    const response = await new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        { 
-          action: "generateCoverLetter", 
-          jobDescription, 
-          resumeText 
-        },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            resolve({ error: chrome.runtime.lastError.message });
-          } else {
-            resolve(response);
-          }
-        }
-      );
+    // Send message to background script
+    const response = await chrome.runtime.sendMessage({
+      action: "generateCoverLetter",
+      jobDescription,
+      resumeText
     });
 
     if (response.error) {
       throw new Error(response.error);
     }
 
-    if (response.coverLetter) {
-      const blob = new Blob([response.coverLetter], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `Saurav_Kalaskar_Cover_Letter_${date}.txt`;
+    statusDiv.textContent = "Cover letter generated successfully!";
+    
+    // Create and download the text file with new name
+    const blob = new Blob([response.coverLetter], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Saurav_Kalaskar_Cover_Letter.txt';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
 
-      await new Promise((resolve, reject) => {
-        chrome.downloads.download({
-          url: url,
-          filename: filename,
-          saveAs: true
-        }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error("Failed to download file"));
-          } else {
-            resolve(downloadId);
-          }
-        });
-      });
-
-      URL.revokeObjectURL(url);
-      statusDiv.className = "success";
-      statusDiv.textContent = "Cover letter downloaded successfully!";
-    }
+    // Also display in output div
+    document.getElementById("output").textContent = response.coverLetter;
 
   } catch (error) {
-    console.error("Error:", error);
-    statusDiv.className = "error";
-    statusDiv.textContent = `Error: ${error.message}`;
-  } finally {
-    generateButton.disabled = false;
+    console.error('Error:', error);
+    statusDiv.textContent = error.message || "An error occurred while generating the cover letter.";
   }
 });
 
