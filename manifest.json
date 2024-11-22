@@ -7,15 +7,14 @@
     "activeTab",
     "scripting",
     "storage",
-    "downloads"
+    "tabs"
   ],
   "host_permissions": [
-    "https://api.gemini.com/*"
+    "https://generativelanguage.googleapis.com/*"
   ],
   "minimum_chrome_version": "93",
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -24,8 +23,5 @@
       "48": "icon.png",
       "128": "icon.png"
     }
-  },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }

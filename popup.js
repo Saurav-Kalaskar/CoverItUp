@@ -1,175 +1,167 @@
-document.getElementById("generate").addEventListener("click", async () => {
-  const statusDiv = document.getElementById("status");
-  const resumeText = document.getElementById("resumeText").value;
-  const generateButton = document.getElementById("generate");
-  
-  if (!resumeText.trim()) {
-    statusDiv.className = "error";
-    statusDiv.textContent = "Please paste your resume text first.";
-    return;
-  }
+// Debug logging
+console.log('Popup script loaded');
 
-  try {
-    generateButton.disabled = true;
-    statusDiv.className = "loading";
-    statusDiv.textContent = "Extracting job description from the page...";
-    
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      function: debugJobElements
-    });
+// Store DOM elements
+const elements = {
+    generate: document.getElementById("generate"),
+    status: document.getElementById("status"),
+    resumeText: document.getElementById("resumeText"),
+    apiKey: document.getElementById("apiKey"),
+    apiKeyStatus: document.getElementById("apiKeyStatus"),
+    saveApiKey: document.getElementById("saveApiKey"),
+    output: document.getElementById("output")
+};
 
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      function: getJobDescription
-    });
-
-    const jobDescription = results[0].result;
-    console.log('Extracted Job Description:', jobDescription);
+// API Key handling
+elements.saveApiKey.addEventListener('click', async () => {
+    const apiKey = elements.apiKey.value.trim();
     
-    if (!jobDescription || jobDescription === "Job description not found.") {
-      throw new Error("Could not find job description on the current page. Please make sure you're on a job posting page.");
+    if (!apiKey) {
+        showStatus('apiKeyStatus', 'Please enter an API key', 'error');
+        return;
     }
 
-    statusDiv.textContent = "Found job description. Generating cover letter...";
-    console.log('Job Description:', jobDescription);
-    
-    const response = await new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        { 
-          action: "generateCoverLetter", 
-          jobDescription, 
-          resumeText 
-        },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            resolve({ error: chrome.runtime.lastError.message });
-          } else {
-            resolve(response);
-          }
-        }
-      );
-    });
-
-    if (response.error) {
-      throw new Error(response.error);
+    try {
+        await chrome.storage.sync.set({ 'geminiApiKey': apiKey });
+        showStatus('apiKeyStatus', 'API key saved!', 'success');
+        setTimeout(() => {
+            elements.apiKeyStatus.textContent = '';
+        }, 2000);
+    } catch (error) {
+        showStatus('apiKeyStatus', 'Error saving API key', 'error');
+        console.error('Save API key error:', error);
     }
-
-    if (response.coverLetter) {
-      const blob = new Blob([response.coverLetter], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `Saurav_Kalaskar_Cover_Letter_${date}.txt`;
-
-      await new Promise((resolve, reject) => {
-        chrome.downloads.download({
-          url: url,
-          filename: filename,
-          saveAs: true
-        }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error("Failed to download file"));
-          } else {
-            resolve(downloadId);
-          }
-        });
-      });
-
-      URL.revokeObjectURL(url);
-      statusDiv.className = "success";
-      statusDiv.textContent = "Cover letter downloaded successfully!";
-    }
-
-  } catch (error) {
-    console.error("Error:", error);
-    statusDiv.className = "error";
-    statusDiv.textContent = `Error: ${error.message}`;
-  } finally {
-    generateButton.disabled = false;
-  }
 });
 
+// Generate button handler
+elements.generate.addEventListener("click", async () => {
+    console.log('Generate button clicked');
+    
+    try {
+        // Validate inputs
+        const { geminiApiKey } = await chrome.storage.sync.get('geminiApiKey');
+        if (!geminiApiKey) {
+            throw new Error("Please enter your Gemini API key in the settings above.");
+        }
+        
+        const resumeText = elements.resumeText.value.trim();
+        if (!resumeText) {
+            throw new Error("Please paste your resume text first.");
+        }
+
+        showStatus('status', "Getting job description...");
+        
+        // Get active tab
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) {
+            throw new Error("No active tab found");
+        }
+
+        // Execute content script
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            function: getJobDescription
+        });
+
+        if (!results || !results[0]) {
+            throw new Error("Failed to execute content script");
+        }
+
+        const jobDescription = results[0].result;
+        
+        if (!jobDescription || jobDescription === "Job description not found.") {
+            throw new Error("Could not find job description. Please make sure you're on a job posting page.");
+        }
+
+        showStatus('status', "Found job description. Generating cover letter...");
+        
+        // Generate cover letter
+        const response = await chrome.runtime.sendMessage({
+            action: "generateCoverLetter",
+            jobDescription,
+            resumeText,
+            apiKey: geminiApiKey
+        });
+
+        if (response.error) {
+            throw new Error(response.error);
+        }
+
+        // Handle success
+        showStatus('status', "Cover letter generated successfully!");
+        downloadCoverLetter(response.coverLetter);
+        elements.output.textContent = response.coverLetter;
+
+    } catch (error) {
+        console.error('Generation error:', error);
+        showStatus('status', error.message || "An error occurred", 'error');
+    }
+});
+
+// Helper functions
+function showStatus(elementId, message, type = '') {
+    const element = document.getElementById(elementId);
+    element.textContent = message;
+    element.className = type ? `status-text ${type}` : 'status-text';
+}
+
+function downloadCoverLetter(content) {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Saurav_Kalaskar_Cover_Letter.txt';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
+// Load saved API key on popup open
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM Content Loaded');
+    try {
+        const { geminiApiKey } = await chrome.storage.sync.get('geminiApiKey');
+        if (geminiApiKey) {
+            elements.apiKey.value = geminiApiKey;
+        }
+    } catch (error) {
+        console.error('Error loading API key:', error);
+    }
+});
+
+// Job description extraction function
 function getJobDescription() {
-  try {
-    // Get the main job details container
-    const mainJobDetails = document.querySelector('.jobDetailsLiner.mainDetails');
-    if (!mainJobDetails) return "Job description not found.";
+    try {
+        const mainJobDetails = document.querySelector('.jobDetailsLiner.mainDetails');
+        if (!mainJobDetails) {
+            console.log('Main job details not found');
+            return "Job description not found.";
+        }
 
-    // Get job title
-    const jobTitle = mainJobDetails.querySelector('.jobtitleInJobDetails')?.textContent?.trim() || '';
+        const sections = {
+            jobTitle: mainJobDetails.querySelector('.jobtitleInJobDetails')?.textContent?.trim() || '',
+            jobDescription: mainJobDetails.querySelector('.jobdescriptionInJobDetails')?.textContent?.trim() || '',
+            essentialDuties: Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
+                .find(el => el.textContent.includes('Essential Duties'))
+                ?.nextElementSibling?.textContent?.trim() || '',
+            minQualifications: Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
+                .find(el => el.textContent.includes('Minimum Qualifications'))
+                ?.nextElementSibling?.textContent?.trim() || '',
+            desiredQualifications: Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
+                .find(el => el.textContent.includes('Desired Qualifications'))
+                ?.nextElementSibling?.textContent?.trim() || ''
+        };
 
-    // Get job description
-    const jobDescriptionElement = mainJobDetails.querySelector('.jobdescriptionInJobDetails');
-    const jobDescription = jobDescriptionElement?.textContent?.trim() || '';
+        console.log('Extracted sections:', sections);
 
-    // Get essential duties
-    const essentialDuties = Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
-      .find(el => el.textContent.includes('Essential Duties'))
-      ?.nextElementSibling?.textContent?.trim() || '';
+        return Object.entries(sections)
+            .filter(([_, value]) => value)
+            .map(([key, value]) => `${key.replace(/([A-Z])/g, ' $1').trim()}: ${value}`)
+            .join('\n\n');
 
-    // Get minimum qualifications
-    const minQualifications = Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
-      .find(el => el.textContent.includes('Minimum Qualifications'))
-      ?.nextElementSibling?.textContent?.trim() || '';
-
-    // Get desired qualifications
-    const desiredQualifications = Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
-      .find(el => el.textContent.includes('Desired Qualifications'))
-      ?.nextElementSibling?.textContent?.trim() || '';
-
-    // Combine all relevant information
-    const fullJobDescription = [
-      `Job Title: ${jobTitle}`,
-      `Job Description: ${jobDescription}`,
-      `Essential Duties: ${essentialDuties}`,
-      `Minimum Qualifications: ${minQualifications}`,
-      `Desired Qualifications: ${desiredQualifications}`
-    ].filter(section => section.includes(':')).join('\n\n');
-
-    console.log('Extracted Job Details:', {
-      title: jobTitle,
-      description: jobDescription,
-      duties: essentialDuties,
-      minQual: minQualifications,
-      desiredQual: desiredQualifications
-    });
-
-    return fullJobDescription;
-
-  } catch (error) {
-    console.error('Error extracting job description:', error);
-    return "Error extracting job description. Please try again.";
-  }
-}
-
-function debugJobDescription() {
-  console.log('=== Debug Information ===');
-  
-  const mainContent = document.querySelector('main, [role="main"]');
-  console.log('Main content area:', mainContent);
-  
-  const headings = document.querySelectorAll('h1, h2, h3');
-  console.log('Headings found:', Array.from(headings).map(h => h.textContent));
-  
-  const jobDescSection = document.querySelector('.Job\\ Description, [aria-label="Job Description"]');
-  console.log('Job Description section:', jobDescSection);
-  
-  const navElements = document.querySelectorAll('[role="navigation"], nav');
-  console.log('Navigation elements:', navElements);
-}
-
-function debugJobElements() {
-  const mainDetails = document.querySelector('.jobDetailsLiner.mainDetails');
-  console.log('Main Details Container:', mainDetails);
-  
-  const jobTitle = mainDetails?.querySelector('.jobtitleInJobDetails');
-  console.log('Job Title Element:', jobTitle?.textContent);
-  
-  const jobDesc = mainDetails?.querySelector('.jobdescriptionInJobDetails');
-  console.log('Job Description Element:', jobDesc?.textContent);
-  
-  const questions = mainDetails?.querySelectorAll('.questionClass .question');
-  console.log('All Question Elements:', Array.from(questions || []).map(q => q.textContent));
+    } catch (error) {
+        console.error('Error extracting job description:', error);
+        return "Error extracting job description. Please try again.";
+    }
 }
