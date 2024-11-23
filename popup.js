@@ -139,8 +139,20 @@ function getJobDescription() {
             return "Job description not found.";
         }
 
+        // Find department name element
+        const departmentQuestion = Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
+            .find(el => el.textContent.includes('Department Name'));
+        const departmentName = departmentQuestion?.nextElementSibling?.textContent?.trim() || 'Department Not Found';
+
+        // Find campus location - look for text that starts with "Campus:"
+        const campusElements = Array.from(mainJobDetails.querySelectorAll('.section2RightfieldsInJobDetails'));
+        const campusText = campusElements.find(el => el.textContent.includes('Campus:'))?.textContent || '';
+        const campusLocation = campusText.replace('Campus:', '').trim();
+
         const sections = {
             jobTitle: mainJobDetails.querySelector('.jobtitleInJobDetails')?.textContent?.trim() || '',
+            department: departmentName,
+            campus: campusLocation,  // This will now be "Polytechnic" without "Campus:" prefix
             jobDescription: mainJobDetails.querySelector('.jobdescriptionInJobDetails')?.textContent?.trim() || '',
             essentialDuties: Array.from(mainJobDetails.querySelectorAll('.questionClass .question'))
                 .find(el => el.textContent.includes('Essential Duties'))
@@ -154,6 +166,7 @@ function getJobDescription() {
         };
 
         console.log('Extracted sections:', sections);
+        console.log('Campus Location:', campusLocation); // Debug log
 
         return Object.entries(sections)
             .filter(([_, value]) => value)
