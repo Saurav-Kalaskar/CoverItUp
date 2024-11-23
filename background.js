@@ -29,6 +29,16 @@ async function generateCoverLetter(jobDescription, resumeText, apiKey) {
             year: 'numeric'
         });
 
+        // Extract department from job description
+        const departmentMatch = jobDescription.match(/department:\s*([^\n]+)/i);
+        const department = departmentMatch ? departmentMatch[1].trim() : 'Department';
+
+        // Extract campus, with better regex pattern
+        const campusMatch = jobDescription.match(/campus:\s*([^,\n]+)/i);
+        const campus = campusMatch ? campusMatch[1].trim() : 'Tempe'; // Default to Tempe if not found
+
+        console.log('Extracted campus:', campus); // Debug log
+
         const prompt = `
 You are a professional cover letter generator. Write a customized cover letter that must follow this exact format AND the writing instructions below:
 
@@ -37,8 +47,8 @@ Saurav Sunil Kalaskar
 ${currentDate}
 
 Hiring Manager
-Department
-Arizona State University, Tempe, AZ
+${department}
+Arizona State University, ${campus}, AZ
 
 Dear Hiring Manager,
 
