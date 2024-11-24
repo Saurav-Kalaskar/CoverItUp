@@ -40,10 +40,13 @@ async function generateCoverLetter(jobDescription, resumeText, apiKey) {
         console.log('Extracted campus:', campus); // Debug log
 
         const prompt = `
-You are a professional cover letter generator. Write a customized cover letter that must follow this exact format AND the writing instructions below:
+You are a professional cover letter generator. Create a compelling cover letter following this EXACT format:
 
+[MUST START WITH THIS EXACT HEADER FORMAT:]
 Saurav Sunil Kalaskar
 (602) 399-6425 | skalaska@asu.edu
+Tempe, AZ 85288
+
 ${currentDate}
 
 Hiring Manager
@@ -52,24 +55,53 @@ Arizona State University, ${campus}, AZ
 
 Dear Hiring Manager,
 
-Writing Instructions for the body paragraphs:
-1. Introduction:
-   - Begin with an engaging and creative opening sentence to capture the recruiter's interest
-   - Use a humorous or technical tone based on the job context
-   - Briefly mention how the candidate's background aligns with job requirements
+[FIRST PARAGRAPH GUIDELINES - Create a unique, engaging opening that:]
+- Uses creative analogies (can be technical, innovative, or industry-relevant)
+- Connects real-world/ ongoing technical concepts to your professional capabilities
+- Shows understanding of the role's technical requirements
+- Demonstrates immediate value proposition
+- Can reference:
+  * Technology concepts or principles
+  * Industry trends or challenges
+  * Educational or research impact
+  * Innovation and problem-solving approaches
+  * System architecture or infrastructure metaphors
+  * Real-world technical scenarios
+- Must flow naturally into your qualifications
+- Should be unique and not formulaic
+- should be broad to let the reader know that you are a good fit for the job
 
-2. Body (Two paragraphs):
-   - In each paragraph, highlight two main keywords (skills, experiences, or achievements) most relevant to the job
-   - Explain how these skills/experiences demonstrate ability to excel in the role
-   - Use specific examples from the resume
-   - Keep language professional yet approachable
+[REMAINING PARAGRAPHS:]
+[Second Paragraph - Highlight specific achievements:]
+- Focus on most relevant technical experience
+- Include quantifiable results
+- Connect directly to job requirements
+- Use active voice and specific examples
 
-3. Conclusion:
-   - End with enthusiasm for the role and company
-   - Include a polite call-to-action for interview
+[Third Paragraph - Demonstrate additional value:]
+- Highlight complementary skills
+- Show understanding of department needs
+- Include relevant academic or project experience
+- Demonstrate growth mindset
 
+[Final Paragraph - Strong closing:]
+- Express genuine interest in the role
+- Reference specific department goals
+- Include clear call to action
+- Keep professional and confident
+
+End with:
 Sincerely,
 Saurav Sunil Kalaskar
+
+Style Requirements:
+- MUST include all header information exactly as shown above
+- Create unique, engaging openings not limited to any specific templates
+- Maintain professional tone while being creative
+- Use natural transitions between paragraphs
+- Include technical terms appropriately
+- Avoid clichés and generic phrases
+- No headers or style labels in the actual letter
 
 Use this job description to identify relevant skills and requirements: ${jobDescription}
 And match with experience from this resume: ${resumeText}`;
