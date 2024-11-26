@@ -65,12 +65,15 @@ body {
 /* Input fields */
 .api-input-container {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
+    max-width: 70%;
 }
 
 .input-field {
     flex: 1;
-    padding: 0.75rem;
+    height: 40px;
+    padding: 0 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     font-size: 0.875rem;
@@ -78,8 +81,8 @@ body {
 }
 
 .textarea-field {
-    width: 100%;
-    min-height: 150px;
+    width: 90%;
+    min-height: 200px;
     padding: 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
@@ -117,10 +120,31 @@ body {
 .button-secondary {
     background-color: var(--secondary-color);
     color: white;
+    width: 100%;
+    margin-top: 1rem;
 }
 
 .button-secondary:hover {
-    opacity: 0.9;
+    background-color: #4B5563;
+}
+
+.button-save {
+    height: 40px;
+    padding: 0 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    background-color: var(--secondary-color);
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.button-save:hover {
+    background-color: #4B5563;
 }
 
 /* Status messages */
