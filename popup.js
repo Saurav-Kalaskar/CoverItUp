@@ -9,7 +9,8 @@ const elements = {
     apiKey: document.getElementById("apiKey"),
     apiKeyStatus: document.getElementById("apiKeyStatus"),
     saveApiKey: document.getElementById("saveApiKey"),
-    output: document.getElementById("output")
+    output: document.getElementById("output"),
+    downloadButton: document.getElementById("downloadButton")
 };
 
 // API Key handling
@@ -73,6 +74,13 @@ elements.generate.addEventListener("click", async () => {
             throw new Error("Could not find job description. Please make sure you're on a job posting page.");
         }
 
+        // Extract job title from the description
+        const jobTitleMatch = jobDescription.match(/job title:\s*([^\n]+)/i);
+        const jobTitle = jobTitleMatch ? jobTitleMatch[1].trim() : 'Position';
+        
+        // Store job title in the output div's data attribute
+        elements.output.dataset.jobTitle = jobTitle;
+
         showStatus('status', "Found job description. Generating cover letter...");
         
         // Generate cover letter
@@ -89,8 +97,8 @@ elements.generate.addEventListener("click", async () => {
 
         // Handle success
         showStatus('status', "Cover letter generated successfully!");
-        downloadCoverLetter(response.coverLetter);
         elements.output.textContent = response.coverLetter;
+        elements.downloadButton.style.display = 'block';
 
     } catch (error) {
         console.error('Generation error:', error);
@@ -103,14 +111,23 @@ function showStatus(elementId, message, type = '') {
     const element = document.getElementById(elementId);
     element.textContent = message;
     element.className = type ? `status-text ${type}` : 'status-text';
+    
+    if (type === 'error') {
+        elements.downloadButton.style.display = 'none';
+    }
 }
 
-function downloadCoverLetter(content) {
+function downloadCoverLetter(content, jobTitle) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // Clean up job title by removing special characters and spaces
+    const cleanJobTitle = jobTitle.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+    const fileName = `Cover_Letter_${cleanJobTitle}_${timestamp}.txt`;
+    
     const blob = new Blob([content], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'Saurav_Kalaskar_Cover_Letter.txt';
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -178,3 +195,12 @@ function getJobDescription() {
         return "Error extracting job description. Please try again.";
     }
 }
+
+// Add new event listener for download button
+elements.downloadButton.addEventListener('click', () => {
+    const coverLetter = elements.output.textContent;
+    const jobTitle = elements.output.dataset.jobTitle || 'Position';
+    if (coverLetter) {
+        downloadCoverLetter(coverLetter, jobTitle);
+    }
+});
