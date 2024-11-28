@@ -253,3 +253,21 @@ observer.observe(elements.output, {
 
 // Save state before popup closes
 window.addEventListener('beforeunload', saveState);
+
+// Add character count functionality
+const MAX_CHARS = 3000;
+const charCountElement = document.getElementById('charCount');
+
+elements.resumeText.addEventListener('input', () => {
+    const currentLength = elements.resumeText.value.length;
+    charCountElement.textContent = `${currentLength}/${MAX_CHARS}`;
+    
+    if (currentLength > MAX_CHARS) {
+        elements.resumeText.value = elements.resumeText.value.slice(0, MAX_CHARS);
+        charCountElement.style.color = 'var(--error-color)';
+    } else {
+        charCountElement.style.color = 'var(--text-secondary)';
+    }
+    
+    saveState(); // Save state when text changes
+});
