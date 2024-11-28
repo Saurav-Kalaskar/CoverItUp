@@ -99,6 +99,7 @@ elements.generate.addEventListener("click", async () => {
         showStatus('status', "Cover letter generated successfully!");
         elements.output.textContent = response.coverLetter;
         elements.downloadButton.style.display = 'block';
+        saveState();
 
     } catch (error) {
         console.error('Generation error:', error);
@@ -204,3 +205,51 @@ elements.downloadButton.addEventListener('click', () => {
         downloadCoverLetter(coverLetter, jobTitle);
     }
 });
+
+// Add save state function
+function saveState() {
+    const state = {
+        resumeText: elements.resumeText.value,
+        outputText: elements.output.textContent,
+        showDownloadButton: elements.downloadButton.style.display,
+        jobTitle: elements.output.dataset.jobTitle || ''
+    };
+    
+    chrome.storage.local.set({ extensionState: state }, () => {
+        console.log('State saved');
+    });
+}
+
+// Add restore state function
+async function restoreState() {
+    try {
+        const { extensionState } = await chrome.storage.local.get('extensionState');
+        if (extensionState) {
+            elements.resumeText.value = extensionState.resumeText || '';
+            elements.output.textContent = extensionState.outputText || '';
+            elements.downloadButton.style.display = extensionState.showDownloadButton || 'none';
+            if (extensionState.jobTitle) {
+                elements.output.dataset.jobTitle = extensionState.jobTitle;
+            }
+        }
+    } catch (error) {
+        console.error('Error restoring state:', error);
+    }
+}
+
+// Add event listeners for state management
+document.addEventListener('DOMContentLoaded', restoreState);
+
+// Save state when text changes
+elements.resumeText.addEventListener('input', saveState);
+
+// Save state when output changes (add this after generating cover letter)
+const observer = new MutationObserver(saveState);
+observer.observe(elements.output, { 
+    characterData: true, 
+    childList: true, 
+    subtree: true 
+});
+
+// Save state before popup closes
+window.addEventListener('beforeunload', saveState);
